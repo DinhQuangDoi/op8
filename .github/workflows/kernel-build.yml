@@ -72,27 +72,27 @@ jobs:
     
     - name: Build kernel
       run: |
-        make op8_defconfig ARCH=arm64 \
-          CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
+        make O=out ARCH=arm64 \
+          CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- op8_defconfig
 
         # Build with all cores
-        make -j$(nproc) ARCH=arm64 \
+        make O=out -j$(nproc) ARCH=arm64 \
           CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
     
     - name: Package AnyKernel3
       run: |
         cd AnyKernel3
         # Copy kernel Image
-        if [ -f ../arch/arm64/boot/Image ]; then
-          cp ../arch/arm64/boot/Image .
-        elif [ -f ../Image ]; then
-          cp ../Image .
+        if [ -f ../out/arch/arm64/boot/Image ]; then
+          cp ../out/arch/arm64/boot/Image .
+        elif [ -f ../out/Image ]; then
+          cp ../out/Image .
         fi
         
         # Copy dtbs if exists
-        if [ -d ../arch/arm64/boot/dts ]; then
+        if [ -d ../out/arch/arm64/boot/dts ]; then
           mkdir -p dtbs
-          cp ../arch/arm64/boot/dts/*/*.dtb dtbs/ 2>/dev/null || true
+          cp ../out/arch/arm64/boot/dts/*/*.dtb dtbs/ 2>/dev/null || true
         fi
         
         # Create zip
@@ -106,9 +106,9 @@ jobs:
         name: kernel-artifacts
         path: |
           AnyKernel3/kernel.zip
-          arch/arm64/boot/Image
-          vmlinux
-          Module.symvers
+          out/arch/arm64/boot/Image
+          out/vmlinux
+          out/Module.symvers
         if-no-files-found: ignore
 
     - name: Build Summary
