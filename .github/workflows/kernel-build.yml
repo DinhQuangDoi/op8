@@ -35,6 +35,7 @@ jobs:
           build-essential \
           bc \
           binutils \
+          gcc-aarch64-linux-gnu \
           git \
           curl \
           xz-utils \
@@ -47,10 +48,12 @@ jobs:
       run: |
         mkdir -p toolchain
         cd toolchain
-        
-        # Download Proton Clang
-        curl -sL "https://github.com/kdrag0n/proton-clang/releases/download/proton-clang@20240901/clang.tar.zst" | tar -xJ
-        echo "CLANG_PATH=$(pwd)/clang" >> $GITHUB_ENV
+
+        # Download official LLVM/Clang 17.0.6 (matches blu_spark clang)
+        curl -sL "https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04.tar.xz" -o llvm.tar.xz
+        tar -xJf llvm.tar.xz
+        rm llvm.tar.xz
+        mv clang+llvm-* clang
         echo "PATH=$(pwd)/clang/bin:$PATH" >> $GITHUB_ENV
 
     - name: Download AnyKernel3
@@ -69,14 +72,12 @@ jobs:
     
     - name: Build kernel
       run: |
-        make op8_defconfig ARCH=arm64
-        
+        make op8_defconfig ARCH=arm64 \
+          CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
+
         # Build with all cores
         make -j$(nproc) ARCH=arm64 \
-          CC=${CLANG_PATH:-${GCC_PATH}}/bin/clang \
-          CLANG_TRIPLE=aarch64-linux-gnu- \
-          CROSS_COMPILE=${CROSS_COMPILE:-aarch64-linux-gnu-} \
-          || make -j$(nproc) ARCH=arm64
+          CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
     
     - name: Package AnyKernel3
       run: |
