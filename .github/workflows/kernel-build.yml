@@ -57,9 +57,8 @@ jobs:
         echo "PATH=$(pwd)/clang/bin:$PATH" >> $GITHUB_ENV
 
     - name: Download AnyKernel3
-      if: true
       run: |
-        git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git anykernel3 || true
+        git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3 || echo "::warning::AnyKernel3 clone failed, will upload built Image only"
     
     - name: Verify KSU Integration
       run: |
@@ -81,6 +80,11 @@ jobs:
     
     - name: Package AnyKernel3
       run: |
+        if [ ! -d AnyKernel3 ]; then
+          echo "::warning::AnyKernel3 not available, skipping zip packaging"
+          exit 0
+        fi
+
         cd AnyKernel3
         # Copy kernel Image
         if [ -f ../out/arch/arm64/boot/Image ]; then
