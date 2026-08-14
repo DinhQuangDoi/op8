@@ -18,6 +18,10 @@ env:
   TOOLCHAIN_TYPE: clang
   KERNEL_VERSION: 4.19.19
   KERNEL_OUT: out
+  # ccache tweaks for fast rebuilds
+  CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
+  CCACHE_NOHASHDIR: "true"
+  CCACHE_HARDLINK: "true"
 
 jobs:
   build:
@@ -36,6 +40,7 @@ jobs:
           build-essential \
           bc \
           binutils \
+          ccache \
           gcc-aarch64-linux-gnu \
           git \
           curl \
@@ -71,13 +76,25 @@ jobs:
           echo "KSU not integrated yet"
         fi
 
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1.2.22
+      with:
+        key: build-kernel-${{ env.DEVICE_CODENAME }}-${{ env.TOOLCHAIN_TYPE }}
+        max-size: 2G
+
     - name: Build kernel
       run: |
         make O=out ARCH=arm64 \
-          CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- op8_defconfig
+          CC="ccache clang" CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- op8_defconfig
 
-        make O=out -j$(nproc) ARCH=arm64 \
-          CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
+        make O=out -j$(nproc --all) ARCH=arm64 \
+          CC="ccache clang" CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
+    - name: ccache stats
+      run: |
+        ccache -s
+        echo "### Ccache stats" >> $GITHUB_STEP_SUMMARY
+        ccache -s | grep -E "Hits|Misses|Cache size|Hit rate" | sed 's/^/- \|/' >> $GITHUB_STEP_SUMMARY
+
 
     - name: Package AnyKernel3
       run: |
